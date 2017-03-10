@@ -1,0 +1,178 @@
+<html>
+<head>
+	<title>IO Chat</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	<style>
+		@import url('https://fonts.googleapis.com/css?family=Roboto+Mono');
+
+		* { box-sizing: border-box; } 
+		body{
+			margin-top:30px;
+		}
+		.container { border: 1px solid #5a5a5a; background: #efefef; }
+		.chat-history, .online-users { background: #666; height: 450px; margin-bottom: 15px; color: #fafafa; position: relative; padding: 7px; }
+		#history li { font-family: 'Roboto Mono', monospace; }
+		#users li { color: #d8d8d8; }
+		#message { background: #efefef; border: 1px solid #9e9e9e; border-radius: 0; color: #2c2c2c; padding: 3px 5px; height: auto; font-weight: bold; height: 30px; }
+		h4 { color: #383838; font-size: 15px; margin: 10px 0 5px; font-weight: bold; }
+
+		.name { margin: 0 10px; display: inline-block; }
+		.name:after { content: ':'; color: #fafafa; }
+		.name.current { color: #e9f12a; }
+		.name.u1 { color: #869e84; }
+		.name.u2 { color: #c79b9c; }
+		.you { color: #d8d8d8!important; }
+		#history, #users { height: auto; max-height: 100%; width: 100%; overflow-y: auto; position: absolute; bottom: 0; margin: 0; list-style: none; padding: 5px 0; }
+		.col-xs-4 { float: right; }
+
+@media all and (max-width: 550px) {
+	.col-xs-8, .col-xs-4 {
+		width: 100%;
+		float: none;
+		padding: 0 15px!important;
+	}
+}
+
+	</style>
+	
+</head>
+<body>
+
+
+	<div class ="container">
+		<div class="row">
+			
+			<div class="col-xs-4" style="padding-left: 0;">
+				<h4>Online Users:</h4>
+				<div class="online-users">
+					<ul class="list-group" id="users">
+					</ul>
+				</div>
+			</div>
+
+			<div class="col-xs-8">
+				<h4 id = "name"> You are <span class="username"></span></h4>
+				<div class="chat-history">
+					<ul class="list-group" id="history">
+						<li class="you">You are <span class="username"></span></li>
+					</ul>
+				</div>
+			</div>
+
+		</div>
+		<div class="row">
+			<div class="col-xs-12">
+				<div class="chat" id="chat"></div>
+				<form id="messageForm">
+					<div class="form-group">
+						<textarea  onkeyup="textAreaAdjust(this)" class="form-control" id="message" placeholder="Type here..." autofocus></textarea>
+						<!-- <br />
+						<input type="submit" class="btn btn-primary" value="Send Message" /> -->
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+	
+	<script>
+		$(function(){
+			var socket = io.connect();
+			var $messageForm = $('#messageForm');
+			var $message = $('#message');
+			var $chat = $('#history');
+			var $users = $('#users');
+			var color = "#fff";
+			
+			$messageForm.submit(function(e){
+				e.preventDefault();
+				var username = document.getElementById("name").textContent;
+				
+				username = username.replace('You are ', '');
+				var text = $message.val();
+				
+				//IF USER WANTS TO CHANGE USERNAME COLOR
+				if($message.val().startsWith("/nickcolor ")){
+					
+					color = $message.val().replace('/nickcolor ', '');
+					color = "#" + color
+					$message.val('');
+					
+				}
+
+				//IF THE USER WANTS TO CHANGE USERNAME
+				if($message.val().startsWith("/nick <") && $message.val().endsWith(">")){
+					var newname = $message.val();
+					newname = newname.replace('/nick ', '');
+					newname = newname.replace('<', ' ');
+					newname = newname.replace('>', '');
+					socket.emit('update username', newname); //Tell the server about the new username
+					socket.on('new message', function(data){
+						if(data.msg.startsWith("The username")){
+							console.log("err");
+						}
+						else if(data.msg.startsWith("Username changed")){
+						$(".username").html(newname);
+						document.cookie = "username =" + newname; //////////////////////////////////////
+						$message.val('');
+						}
+					});
+				}
+				//IF USER WANTS TO CARRY ON WITH ASSIGNED USERNAME
+
+				else if($message.val().length > 0){
+						socket.emit('send message', {name:'<span style="color:' + color + ';">' + username + '</span>' + ": ", msg: $message.val()});
+						console.log('Submitted');
+						$message.val('');
+				}
+				$message.val('');
+			});
+			
+			socket.on('new username', function(data){
+				var username = data.name;
+				document.cookie = "username =" + username; /////////////////////////////////
+				$(".username").html(username);
+			});
+		
+			socket.on('user list', function(data){
+				$('.online-user').remove();
+				for(var i = 0; i < data.length; i++){
+					$users.append('<li class="online-user">'+ data[i] +'</li>');
+				}
+				var elem = document.getElementById('users');
+  				elem.scrollTop = elem.scrollHeight;
+				
+			});
+			
+			socket.on('new message', function(data){
+				$chat.append('<li class="message">' + data.msg +'</li>');
+				//$('.other-user').css('color',color);
+				var elem = document.getElementById('history');
+  				elem.scrollTop = elem.scrollHeight;
+			});
+			
+		});
+
+		console.log("test");
+		console.log(document.cookie);
+		
+	$("textarea").keypress(function (e) {
+	    if(e.which == 13 && !e.shiftKey) {        
+	        $(this).closest("form").submit();
+	        e.preventDefault();
+	        return false;
+	    }
+	});
+
+	function textAreaAdjust(o) {
+	  o.style.height = "1px";
+	  o.style.height = (5+o.scrollHeight)+"px";
+	}
+	
+	</script>	
+
+
+</body>
+</html>
