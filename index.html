@@ -8,7 +8,7 @@
 	<style>
 		@import url('https://fonts.googleapis.com/css?family=Roboto+Mono');
 
-		* { box-sizing: border-box; } 
+		* { box-sizing: border-box; }
 		body{
 			margin-top:30px;
 		}
@@ -37,14 +37,14 @@
 }
 
 	</style>
-	
+
 </head>
 <body>
 
 
 	<div class ="container">
 		<div class="row">
-			
+
 			<div class="col-xs-4" style="padding-left: 0;">
 				<h4>Online Users:</h4>
 				<div class="online-users">
@@ -76,7 +76,7 @@
 			</div>
 		</div>
 	</div>
-	
+
 	<script>
 		$(function(){
 			var socket = io.connect();
@@ -85,29 +85,27 @@
 			var $chat = $('#history');
 			var $users = $('#users');
 			var color = "#fff";
-			
+
 			$messageForm.submit(function(e){
 				e.preventDefault();
 				var username = document.getElementById("name").textContent;
-				
+
 				username = username.replace('You are ', '');
 				var text = $message.val();
-				
+
 				//IF USER WANTS TO CHANGE USERNAME COLOR
 				if($message.val().startsWith("/nickcolor ")){
-					
+
 					color = $message.val().replace('/nickcolor ', '');
-					color = "#" + color
+					//color = "#" + color
 					$message.val('');
-					
+
 				}
 
 				//IF THE USER WANTS TO CHANGE USERNAME
-				if($message.val().startsWith("/nick <") && $message.val().endsWith(">")){
+				if($message.val().startsWith("/nick ")){
 					var newname = $message.val();
 					newname = newname.replace('/nick ', '');
-					newname = newname.replace('<', ' ');
-					newname = newname.replace('>', '');
 					socket.emit('update username', newname); //Tell the server about the new username
 					socket.on('new message', function(data){
 						if(data.msg.startsWith("The username")){
@@ -120,8 +118,8 @@
 						}
 					});
 				}
-				//IF USER WANTS TO CARRY ON WITH ASSIGNED USERNAME
 
+				//IF USER WANTS TO CARRY ON WITH ASSIGNED USERNAME
 				else if($message.val().length > 0){
 						socket.emit('send message', {name:'<span style="color:' + color + ';">' + username + '</span>' + ": ", msg: $message.val()});
 						console.log('Submitted');
@@ -129,13 +127,15 @@
 				}
 				$message.val('');
 			});
-			
+
+			//
 			socket.on('new username', function(data){
 				var username = data.name;
 				document.cookie = "username =" + username; /////////////////////////////////
 				$(".username").html(username);
 			});
-		
+
+			//Listen for server to tell us that online users list needs an update
 			socket.on('user list', function(data){
 				$('.online-user').remove();
 				for(var i = 0; i < data.length; i++){
@@ -143,23 +143,23 @@
 				}
 				var elem = document.getElementById('users');
   				elem.scrollTop = elem.scrollHeight;
-				
+
 			});
-			
+
 			socket.on('new message', function(data){
 				$chat.append('<li class="message">' + data.msg +'</li>');
 				//$('.other-user').css('color',color);
 				var elem = document.getElementById('history');
   				elem.scrollTop = elem.scrollHeight;
 			});
-			
+
 		});
 
 		console.log("test");
 		console.log(document.cookie);
-		
+
 	$("textarea").keypress(function (e) {
-	    if(e.which == 13 && !e.shiftKey) {        
+	    if(e.which == 13 && !e.shiftKey) {
 	        $(this).closest("form").submit();
 	        e.preventDefault();
 	        return false;
@@ -170,8 +170,8 @@
 	  o.style.height = "1px";
 	  o.style.height = (5+o.scrollHeight)+"px";
 	}
-	
-	</script>	
+
+	</script>
 
 
 </body>

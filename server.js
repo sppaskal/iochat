@@ -1,8 +1,8 @@
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
-var io = require('socket.io').listen(server); 
-var count = 1;
+var io = require('socket.io').listen(server);
+var count = 0;
 userArray = [];
 userNamesArray = [];
 connections = [];
@@ -18,13 +18,17 @@ app.get('/', function(req, res){
 io.sockets.on('connection', function(socket){
 	connections.push(socket);
 	console.log("Connected: %s sockets connected", connections.length);
-	
-	//Give new user a name		
-	var username = "User" + count;
+
+	//Give new user a name
 	count++;
+	console.log(userArray);
+	while(userArray.indexOf("User" + count) > -1 || userArray.indexOf("user" + count) > -1){
+		count++;
+	}
+	var username = "User" + count;
 	console.log("User: " + username);
 	io.to(socket.id).emit('new username', {name: username});
-	
+
 	//Add new user to list of online users
 	socket.username = username;
 	userArray.push(socket.username);
@@ -32,7 +36,7 @@ io.sockets.on('connection', function(socket){
 
 	//Supply new user with chat memory
 	for(var i = 0; i < chatMemory.length; i++) {
-		io.to(socket.id).emit('new message', {msg: chatMemory[i]});	
+		io.to(socket.id).emit('new message', {msg: chatMemory[i]});
 	}
 
 	//User has disconnected
@@ -42,9 +46,9 @@ io.sockets.on('connection', function(socket){
 		//Take out user from user list when they disconnect
 		userArray.splice(userArray.indexOf(socket.username), 1);
 		io.sockets.emit('user list', userArray);
-		
+
 	});
-	
+
 	//Echo message back to clients
 	socket.on('send message', function(data){
 		console.log(data);
@@ -54,7 +58,7 @@ io.sockets.on('connection', function(socket){
 		boldMessage = boldMessage.bold();
 		io.to(socket.id).emit('new message', {msg: time() + data.name + boldMessage}); //emit to the sender
 	});
-	
+
 	//Check if desired username is already in use and if it's not then change it in userArray and tell the client
 	socket.on('update username', function(data){
 		var isUnique = true;
@@ -69,7 +73,7 @@ io.sockets.on('connection', function(socket){
 				isUnique = false;
 			}
 		}
-		
+
 		if(isUnique == false){
 			io.to(socket.id).emit('new message', {msg: "The username " + match + " is already in use"});
 		}
@@ -80,30 +84,27 @@ io.sockets.on('connection', function(socket){
 				userArray[index] = data;
 			}
 			io.sockets.emit('user list', userArray);
-			io.to(socket.id).emit('new message', {msg: "Username changed to" + data});
-		}	
+			io.to(socket.id).emit('new message', {msg: "Username changed to " + data});
+		}
 	});
-	
-	
+
+
 });
 
 function time() {
 	var date = new Date(); // for now
-	var h = date.getHours(); 
-	var m = date.getMinutes(); 
+	var h = date.getHours();
+	var m = date.getMinutes();
 
 	if(h < 10) {
-		h = '0' + h; 
+		h = '0' + h;
 	}
-	
+
 	if(m < 10) {
-		m = '0' + m; 
+		m = '0' + m;
 	}
-	
+
 	var time = h + ":" + m;
-	
+
 	return time;
 }
-
-
-
